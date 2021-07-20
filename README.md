@@ -47,5 +47,6 @@ You are ready to use it in the repeater, intruder to fuzz, etc.
 
 ## Change log
 
+- 1.2 (07/20/2021): Core reorganization + adding Swagger browsing for associated YAML files and a clear-all button
 - 1.1 (07/20/2021): Fixing errors in headers and adapting default values to actual 5G core
 - 1.0 (05/20/2021): Initial release
