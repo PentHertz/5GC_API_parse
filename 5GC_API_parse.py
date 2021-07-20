@@ -137,6 +137,7 @@ class BurpExtender(IBurpExtender, ITab, IMessageEditorController, IContextMenuFa
         """
             Clear all tabs
         """
+        self.editboxes = []
         self.tab.remove(self.tabbedPane)
         self.tabbedPane = swing.JTabbedPane()
         self.tab.add("Center", self.tabbedPane)
