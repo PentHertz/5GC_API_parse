@@ -2,7 +2,7 @@
 
 ## Description
 
-5GC API parse is a BurpSuite extension allowing to assess 5G core network network function, by parsing the OpenAPI 3.0 not supported by previous OpenAPI extension in Burp, and generating requests for intrusion tests purposes.
+5GC API parse is a BurpSuite extension allowing to assess 5G core network functions, by parsing the OpenAPI 3.0 not supported by previous OpenAPI extension in Burp, and generating requests for intrusion tests purposes.
 
 ![Burp extension's tab](https://raw.githubusercontent.com/PentHertz/5GC_API_parse/main/images/first.png)
 
