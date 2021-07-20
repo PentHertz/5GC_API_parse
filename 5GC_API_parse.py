@@ -7,27 +7,46 @@
 from burp import IBurpExtender, ITab 
 from burp import IMessageEditorController, IContextMenuFactory
 from javax import swing
-from java.awt import Font
-from java.awt import BorderLayout
-from java.awt import Color
-from java.awt import BorderLayout
-from javax.swing import JButton
-from javax.swing import JFileChooser
-from javax.swing import JMenuItem
+from java.awt import (
+    Font,
+    BorderLayout,
+    Color,
+    Desktop,
+    Button,
+)
+from java.awt.event import ActionListener
+from javax.swing import (
+    JButton,
+    JFileChooser,
+    JMenuItem,
+)
 from javax.swing.text import DefaultHighlighter
-from java.awt import Button
 from java.util import LinkedList
+from java.net import URI
 import sys
 
-import yaml
-import json
 from urlparse import urlparse
+from utils.OpenAPI3GPP import *
+
+__AUTHOR__ = "Sebastien Dudek (FlUxIuS)"
+__VERSION__ = "1.2"
+
+SWAGGER_URL = "https://jdegre.github.io/editor/?url=https://raw.githubusercontent.com/jdegre/5GC_APIs/master/"
 
 
 try:
     from exceptions_fix import FixBurpExceptions
 except ImportError:
     pass
+
+
+class CallbackActionListener(ActionListener):
+    def __init__(self, callback):
+        ActionListener.__init__(self)
+        self._callback = callback
+
+    def actionPerformed(self, event):
+        self._callback(event)
 
 
 class BurpExtender(IBurpExtender, ITab, IMessageEditorController, IContextMenuFactory):
@@ -60,7 +79,7 @@ class BurpExtender(IBurpExtender, ITab, IMessageEditorController, IContextMenuFa
 
 
         # YAML file label
-        toptextLabel = swing.JLabel('5GC Network Function parser (version 1.1)')
+        toptextLabel = swing.JLabel('5GC Network Function parser (version 1.2)')
         boxHorizontal.add(toptextLabel)
         author = swing.JLabel('By @FlUxIuS at https://penthertz.com')
         
@@ -103,7 +122,7 @@ class BurpExtender(IBurpExtender, ITab, IMessageEditorController, IContextMenuFa
         # Created a tabbed pane to go in the center of the
         # main tab, below the text area
         self.tabbedPane = swing.JTabbedPane()
-        self.tab.add("Center", self.tabbedPane);
+        self.tab.add("Center", self.tabbedPane)
 
 
         # Add the text panel to the top of the main tab
@@ -112,6 +131,15 @@ class BurpExtender(IBurpExtender, ITab, IMessageEditorController, IContextMenuFa
         # Add the custom tab to Burp's UI
         callbacks.addSuiteTab(self)
         return
+
+
+    def clearTabs(self, event):
+        """
+            Clear all tabs
+        """
+        self.tab.remove(self.tabbedPane)
+        self.tabbedPane = swing.JTabbedPane()
+        self.tab.add("Center", self.tabbedPane)
 
 
     def selectFile(self, event):
@@ -217,154 +245,16 @@ class BurpExtender(IBurpExtender, ITab, IMessageEditorController, IContextMenuFa
         boxVertical.add(SendTobutton)
         rTextArea.setText(params)
 
-
-class OpenAPI3GPP(object):
-    
-
-    yamlinst = None
-
-
-    def __init__(self, yamlfile):
-        self.yamlinst = yaml.load(open(yamlfile), Loader=yaml.FullLoader)
-
-
-    def listpaths(self):
-        return [k for k, v in self.yamlinst['paths'].items()]
-
-    
-    def getEndPointVerbs(self, path):
-        return [k for k, v in self.yamlinst['paths'][path].items()]
+        urltobrowse = SWAGGER_URL + "/" +  self.textAreaFile.getText().split("/")[-1]
+        btnswag = Button('Open similar API file\'s Swagger')
+        btnswag.addActionListener(
+            CallbackActionListener(lambda _: Desktop.getDesktop().browse(URI(urltobrowse)))
+        )
+        boxVertical.add(btnswag)
+        ClearAllbutton = Button('Clear all', actionPerformed=self.clearTabs)
+        boxVertical.add(ClearAllbutton)
 
 
-    def getEndPointSummary(self, path, verb):
-        try:
-            return self.yamlinst['paths'][path][verb]['summary']
-        except:
-            return None
-
-
-    def getTags(self, path, verb):
-        try:
-            return ''.join(self.yamlinst['paths'][path][verb]['tags'])
-        except:
-            return None
-
-
-    def getParameters(self, path, verb):
-        try:
-            return self.yamlinst['paths'][path][verb]['parameters']
-        except:
-            return []
-
-
-    def getRequestBody(self, path, verb):
-        try:
-            return self.yamlinst['paths'][path][verb]['callbacks']
-        except:
-            return []
-
-
-    def dumpParameters(self, path, verb):
-        try:
-            return yaml.dump(self.getParameters(path, verb))
-        except:
-            return None
-
-
-    def dumpRequestBody(self, path, verb):
-        try:
-            return yaml.dump(self.getRequestBody(path, verb))
-        except:
-            return None
-
-
-    def getRequestJSObject(self, path, verb):
-        try:
-            return self.yamlinst['paths'][path][verb]['requestBody']['content']['application/json']['schema']['$ref']
-        except:
-            return None
-
-
-    def fetchObject(self, path):
-        prop = self.yamlinst
-        for k in path:
-            prop = prop[k]
-        return prop
-
-
-    def getPropJSObject(self, path, verb):
-        jsobj = self.getRequestJSObject(path, verb)
-        paths = jsobj.split('/')[1:]
-        obj = self.fetchObject(paths)
-        required = obj['required']
-        return (obj['properties'], required) 
-
-
-    def buildJSObj(self, path, verb):
-        props, reqs = self.getPropJSObject(path, verb)
-        ojson = {}
-        for k, v in props.items():
-            if k in reqs:
-                ojson[k] = 'required_value'
-            else:
-                ojson[k] = 'value'
-        return repr(ojson)
-
-
-    # default field values
-    field_table = { 'Content-Encoding' : 'gzip, deflate',
-                    'Accept-Encoding' : 'gzip, deflate',
-                    'User-Agent' : 'Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:90.0) Gecko/20100101 Firefox/90.0',
-                    'Accept' : 'application/json',
-    }
-
-
-    def buildDefaultHeaders(self, netloc):
-        string = ""
-        string += 'Host: ' + netloc + "\r\n"
-        string += 'User-Agent: ' + self.field_table['User-Agent'] + "\r\n"
-        string += 'Accept: ' + self.field_table['Accept'] + "\r\n"
-        return string
-
-
-    def buildRequest(self, path, verb, reqpath, netloc):
-        """
-            Builds web request from YAML file
-        """
-        parameters = self.getParameters(path, verb)
-        reqpath = self.yamlinst['servers'][0]['url'].format(apiRoot=reqpath) + path
-        extrpath = ""
-        headers = self.buildDefaultHeaders(netloc)
-        body = "\r\n"
-        reqstring = "{verb} {path} HTTP/1.1\r\n"
-        for param in parameters:
-            try:
-                value = "{value}"
-                if param['name'] in self.field_table:
-                    value = self.field_table[param['name']]
-
-                if param['in'] == 'header':
-                    headers += "%s: %s\r\n" % (param['name'], value)
-                elif param['in'] == 'query':
-                    if extrpath == '':
-                        extrpath += "?"
-                    required = ''
-                    if 'required' in param:
-                        if param['required'] == True:
-                            required = "required"
-                    extrpath += "%s=%s&" % (param['name'], required)
-            except:
-                pass
-        reqpath += extrpath[:-1] # delete last and op
-        reqstring = reqstring.format(verb=verb.upper(), path=reqpath)
-        reqstring += headers
-        reqstring += "\n"
-        reqObj = self.getRequestJSObject(path, verb)
-        if reqObj is not None:
-            reqstring += "\n"
-            reqstring += self.buildJSObj(path, verb)
-        return reqstring
-            
 try:
     FixBurpExceptions()
 except:
