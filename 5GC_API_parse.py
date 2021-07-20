@@ -60,7 +60,7 @@ class BurpExtender(IBurpExtender, ITab, IMessageEditorController, IContextMenuFa
 
 
         # YAML file label
-        toptextLabel = swing.JLabel('5GC Network Function parser (version 1.0)')
+        toptextLabel = swing.JLabel('5GC Network Function parser (version 1.1)')
         boxHorizontal.add(toptextLabel)
         author = swing.JLabel('By @FlUxIuS at https://penthertz.com')
         
@@ -71,7 +71,7 @@ class BurpExtender(IBurpExtender, ITab, IMessageEditorController, IContextMenuFa
         # URL text area
         self.textURL = swing.JTextArea('', 1, 100)
         self.textURL.setLineWrap(True)
-        self.textURL.setText('https://target/endpoint')
+        self.textURL.setText('https://target:8000/endpoint')
         self.textAreaFile = swing.JTextArea('', 1, 100)
         self.textAreaFile.setLineWrap(True)
         buttonFile = Button('Select File', actionPerformed=self.selectFile)
@@ -85,7 +85,7 @@ class BurpExtender(IBurpExtender, ITab, IMessageEditorController, IContextMenuFa
         boxHorizontalPort.add(portLabel)
         self.textPort = swing.JTextArea('', 1, 10)
         self.textPort.setLineWrap(True)
-        self.textPort.setText('443')           
+        self.textPort.setText('8000')           
         boxHorizontalPort.add(self.textPort)
 
         boxVertical.add(self.textURL)
@@ -143,6 +143,7 @@ class BurpExtender(IBurpExtender, ITab, IMessageEditorController, IContextMenuFa
         yamlfile = self.textAreaFile.getText()
         oapi = OpenAPI3GPP(yamlfile)
         paths = oapi.listpaths()
+        parsedUrl = urlparse(self.textURL.getText())
         for path in paths:
             verbs = oapi.getEndPointVerbs(path)
             for verb in verbs:
@@ -150,7 +151,7 @@ class BurpExtender(IBurpExtender, ITab, IMessageEditorController, IContextMenuFa
                 desc = oapi.getEndPointSummary(path, verb)
                 params = oapi.dumpParameters(path, verb)
                 reqpath = urlparse(self.textURL.getText()).path
-                toreq = oapi.buildRequest(path, verb, reqpath)
+                toreq = oapi.buildRequest(path, verb, reqpath, parsedUrl.netloc)
                 body = oapi.dumpRequestBody(path, verb)
 
                 #if len(body) == 0:
@@ -160,12 +161,13 @@ class BurpExtender(IBurpExtender, ITab, IMessageEditorController, IContextMenuFa
 
     def sendToRepeater(self, event):
         isHttps = False
-        if urlparse(self.textURL.getText()).scheme.lower() in "https":
+        parsedUrl = urlparse(self.textURL.getText())
+        if parsedUrl.scheme.lower() == "https":
             isHttps = True
 
         for name, b in self.editboxes:
             self.callbacks.sendToRepeater(
-                urlparse(self.textURL.getText()).netloc,
+                parsedUrl.netloc.split(':')[0],
                 int(self.textPort.getText()),
                 isHttps,
                 b.getMessage(),
@@ -310,19 +312,29 @@ class OpenAPI3GPP(object):
 
 
     # default field values
-    field_table = { 'Content-Encoding' : 'application/json',
-                    'Accept-Encoding' : 'application/json',
+    field_table = { 'Content-Encoding' : 'gzip, deflate',
+                    'Accept-Encoding' : 'gzip, deflate',
+                    'User-Agent' : 'Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:90.0) Gecko/20100101 Firefox/90.0',
+                    'Accept' : 'application/json',
     }
 
 
-    def buildRequest(self, path, verb, reqpath):
+    def buildDefaultHeaders(self, netloc):
+        string = ""
+        string += 'Host: ' + netloc + "\r\n"
+        string += 'User-Agent: ' + self.field_table['User-Agent'] + "\r\n"
+        string += 'Accept: ' + self.field_table['Accept'] + "\r\n"
+        return string
+
+
+    def buildRequest(self, path, verb, reqpath, netloc):
         """
             Builds web request from YAML file
         """
         parameters = self.getParameters(path, verb)
         reqpath = self.yamlinst['servers'][0]['url'].format(apiRoot=reqpath) + path
         extrpath = ""
-        headers = ""
+        headers = self.buildDefaultHeaders(netloc)
         body = "\r\n"
         reqstring = "{verb} {path} HTTP/1.1\r\n"
         for param in parameters:
