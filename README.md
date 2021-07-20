@@ -44,3 +44,8 @@ Just provide a target address with URL scheme, a port number and a OpenAPI 3.0 f
 ![Burp extension's tab](https://github.com/PentHertz/5GC_API_parse/blob/main/images/parsedfile.png)
 
 You are ready to use it in the repeater, intruder to fuzz, etc.
+
+## Change log
+
+- 1.1 (07/20/2021): Fixing errors in headers and adapting default values to actual 5G core
+- 1.0 (05/20/2021): Initial release
