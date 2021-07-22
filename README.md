@@ -28,10 +28,6 @@ java -jar jython-installer-2.7.2.jar
 
 ### 5GC API parse
 
-- `git clone 'https://github.com/PentHertz/5GC_API_parse.git' <installation_folder>`
-- Open Burp on Extender/ Extensions
-- Click `Add`
-- Set Extension type as Python
 - Set Extension file to `<installation_folder>/5GC_API_parse.py`
 - Click `Next`
 - The addon is now installed, a new tab named `5GC API parse` should appear
@@ -44,6 +40,10 @@ Just provide a target address with URL scheme, a port number and a OpenAPI 3.0 f
 ![Burp extension's tab](https://github.com/PentHertz/5GC_API_parse/blob/main/images/parsedfile.png)
 
 You are ready to use it in the repeater, intruder to fuzz, etc.
+
+Quick demo:
+
+https://user-images.githubusercontent.com/715195/126624333-6c4260e8-361e-4a57-b9b1-0e3c297467f7.mp4
 
 ## Change log
 
